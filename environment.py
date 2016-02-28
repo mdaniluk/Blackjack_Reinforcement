@@ -10,6 +10,9 @@ class Environment:
         self.win = 21
         self.loss = 1
         self.dealer_stick = 17
+        self.dealer_values = 10
+        self.player_values = 21
+        self.action_values = 2
         
     def draw(self):
         if random() < self.probability_red:
@@ -45,7 +48,8 @@ class Environment:
                 reward = 0
             else:
                 reward = 1
-                     
+        
+            state_result.terminal = True            
         return [reward, state_result]   
                     
     def add_card(self, value, card):
@@ -54,7 +58,12 @@ class Environment:
         elif(card.color == Color.red):
             value -= card.value
         return value
-                
+    
+    def get_initial_state(self):
+        dealer_card = Card(randint(self.card_min, self.card_max), Color.black)
+        player_card = Card(randint(self.card_min, self.card_max), Color.black)
+        return State(dealer_card.value, player_card.value)
+                    
     
 if __name__ == '__main__':
     env = Environment()
