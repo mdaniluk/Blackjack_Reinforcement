@@ -15,7 +15,8 @@ class Action(Enum):
     stick = 1
     
     def getRandomAction():
-        return Action.hit if random() < 0.5 else Action.stick
+        r = random()
+        return Action.hit if r < 0.5 else Action.stick
     def get_action(n):
         return Action.hit if n == 0 else Action.stick
         

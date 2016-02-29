@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 
+import random as r
+r.seed(1)
+
 class Agent:
     def __init__(self, environment):
         self.env = env = environment
@@ -21,7 +24,11 @@ class Agent:
         self.V = np.zeros((env.dealer_values, env.player_values))
 
     def epsilon_greedy(self, state):
-        min_num_action = min(self.N[state.dealer_card - 1, state.player_sum - 1, :])
+        if state.dealer_card > self.N.shape[0] or state.player_sum > self.N.shape[1]:
+            min_num_action = 0
+        else:
+            min_num_action = min(self.N[state.dealer_card - 1, state.player_sum - 1, :]) 
+            
         eps = self.N0 / (self.N0 + min_num_action)
 #        print (eps)
         if random() < eps:
@@ -56,6 +63,36 @@ class Agent:
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
             self.V[dealer_sum, player_sum] = max(self.Q[dealer_sum, player_sum, :])
     
+    def td_learning(self, iters, alpha):
+        for episode in range(0, iters):
+            state = self.env.get_initial_state()
+            reward = 0
+            action = self.epsilon_greedy(state)           
+            #sample episode
+            while not state.terminal:                   
+                #update number of visits
+                self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1
+                
+                [reward, state_forward] = self.env.step(state, action) 
+                
+                action_forward = self.epsilon_greedy(state_forward)  
+                #update Q
+                if not state_forward.terminal:
+                    update = reward + (self.Q[state_forward.dealer_card - 1, state_forward.player_sum - 1, Action.get_value(action_forward)] -
+                            self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)])
+                else:
+                    update = reward - self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
+
+                self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += (alpha * update)
+                action = action_forward
+                state = state_forward
+                    
+                        
+        #update policy based on action-value function
+        for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
+            self.V[dealer_sum, player_sum] = max(self.Q[dealer_sum, player_sum, :])
+
+#            
     def plot_optimal_value_function(self):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -69,6 +106,6 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
-    agent.monte_carlo_control(1000000)
-    agent.plot_optimal_value_function()
+    agent.td_learning(100000, 0.5)
+#    agent.plot_optimal_value_function()
     print ('a')
