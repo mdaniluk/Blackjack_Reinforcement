@@ -67,7 +67,7 @@ class Agent:
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
             self.V[dealer_sum, player_sum] = max(self.Q[dealer_sum, player_sum, :])
     
-    def td_learning(self, iters, alpha, compare_to_monctecarlo = False):
+    def td_learning(self, iters, lambda_, compare_to_monctecarlo = False):
         if compare_to_monctecarlo:
             monte_carlo_iterations = 1000000
             env = Environment()
@@ -75,36 +75,54 @@ class Agent:
             agent.monte_carlo_control(monte_carlo_iterations)
             Q_monte_carlo = agent.Q
             mse_all = []
-          
+            
         for episode in range(0, iters):
+            E = np.zeros(((self.env.dealer_values, self.env.player_values, self.env.action_values)))  
+            
+            #initialize state and action          
             state = self.env.get_initial_state()
             reward = 0
-            action = self.epsilon_greedy(state)           
-            #sample episode
+            action = self.epsilon_greedy(state)
+#            self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1 
             while not state.terminal:                   
-                #update number of visits
-                self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1
-                
-                [reward, state_forward] = self.env.step(state, action) 
-                
+#                update number of visits
+                self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1              
+                [reward, state_forward] = self.env.step(state, action)                 
                 action_forward = self.epsilon_greedy(state_forward)  
-                #update Q
+                
                 if not state_forward.terminal:
-                    update = reward + (self.Q[state_forward.dealer_card - 1, state_forward.player_sum - 1, Action.get_value(action_forward)] -
-                            self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)])
+                    current_estimate = reward + self.Q[state_forward.dealer_card - 1, state_forward.player_sum - 1, Action.get_value(action_forward)]
+#                    self.N[state_forward.dealer_card - 1, state_forward.player_sum - 1, Action.get_value(action_forward)] += 1
                 else:
-                    update = reward - self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
-
-                self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += (alpha * update)
+                    current_estimate = reward
+                    
+                previous_estimate = self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
+                delta = current_estimate - previous_estimate
+                
+                E[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1
+                
+                step_size = 1.0 / self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
+#                print (step_size)
+                self.Q += step_size * delta * E
+                E = lambda_ * E
+                #update Q
+#                if not state_forward.terminal:
+#                    update = reward + (self.Q[state_forward.dealer_card - 1, state_forward.player_sum - 1, Action.get_value(action_forward)] -
+#                            self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)])
+#                else:
+#                    update = reward - self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
+#
+#                self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += (alpha * update)
                 action = action_forward
                 state = state_forward
             
             if compare_to_monctecarlo:
+#                print (compute_mse(self.Q, Q_monte_carlo))
                 mse_all.append(compute_mse(self.Q, Q_monte_carlo))
 #                print(compute_mse(self.Q, Q_monte_carlo))
   
         if compare_to_monctecarlo:
-            print (mse_all[-1])
+#            print (mse_all[-1])
             plt.plot(range(0, iters), mse_all, 'r-')
             plt.show()
                                  
@@ -126,6 +144,6 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
-    agent.td_learning(10000, 0.1, True)
+    agent.td_learning(10000, 1, True)
 #    agent.plot_optimal_value_function()
     print ('a')
