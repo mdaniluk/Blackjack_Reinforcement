@@ -1,6 +1,13 @@
 from enum import Enum
 from random import random
 
+def compute_mse(Q1, Q2, print_it = False):
+    mse = ((Q1 - Q2) ** 2).mean(axis = None)
+    if print_it:
+        print (mse)
+        print ('\n')
+    return mse
+    
 class Color(Enum):
     red = -1
     black = 1

@@ -3,9 +3,8 @@ from random import random
 from utils import  Action
 from environment import Environment
 import matplotlib.pyplot as plt
-from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
-
+from utils import compute_mse
 import random as r
 r.seed(1)
 
@@ -22,7 +21,12 @@ class Agent:
         
         # Policy
         self.V = np.zeros((env.dealer_values, env.player_values))
-
+        
+    def reset(self):
+        self.N = np.zeros((self.env.dealer_values, self.env.player_values, self.env.action_values))
+        self.Q = np.zeros((self.env.dealer_values, self.env.player_values, self.env.action_values))
+        self.V = np.zeros((self.env.dealer_values, self.env.player_values))
+        
     def epsilon_greedy(self, state):
         if state.dealer_card > self.N.shape[0] or state.player_sum > self.N.shape[1]:
             min_num_action = 0
@@ -63,7 +67,15 @@ class Agent:
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
             self.V[dealer_sum, player_sum] = max(self.Q[dealer_sum, player_sum, :])
     
-    def td_learning(self, iters, alpha):
+    def td_learning(self, iters, alpha, compare_to_monctecarlo = False):
+        if compare_to_monctecarlo:
+            monte_carlo_iterations = 1000000
+            env = Environment()
+            agent = Agent(env)
+            agent.monte_carlo_control(monte_carlo_iterations)
+            Q_monte_carlo = agent.Q
+            mse_all = []
+          
         for episode in range(0, iters):
             state = self.env.get_initial_state()
             reward = 0
@@ -86,8 +98,16 @@ class Agent:
                 self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += (alpha * update)
                 action = action_forward
                 state = state_forward
-                    
-                        
+            
+            if compare_to_monctecarlo:
+                mse_all.append(compute_mse(self.Q, Q_monte_carlo))
+#                print(compute_mse(self.Q, Q_monte_carlo))
+  
+        if compare_to_monctecarlo:
+            print (mse_all[-1])
+            plt.plot(range(0, iters), mse_all, 'r-')
+            plt.show()
+                                 
         #update policy based on action-value function
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
             self.V[dealer_sum, player_sum] = max(self.Q[dealer_sum, player_sum, :])
@@ -106,6 +126,6 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
-    agent.td_learning(100000, 0.5)
+    agent.td_learning(10000, 0.1, True)
 #    agent.plot_optimal_value_function()
     print ('a')
