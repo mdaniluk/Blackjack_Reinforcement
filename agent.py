@@ -1,6 +1,6 @@
 import numpy as np
 from random import random
-from utils import  Action
+from utils import  Action, State
 from environment import Environment
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -21,26 +21,32 @@ class Agent:
         
         # Policy
         self.V = np.zeros((env.dealer_values, env.player_values))
+        self.weights = np.random.uniform(low=-0.00, high=0.0, size=(36))
+#        self.Q = np.random.uniform(low=-0, high=0, size=(420))
+#        self.Q = np.reshape(self.Q, (env.dealer_values, env.player_values, env.action_values))
+
         
     def reset(self):
         self.N = np.zeros((self.env.dealer_values, self.env.player_values, self.env.action_values))
         self.Q = np.zeros((self.env.dealer_values, self.env.player_values, self.env.action_values))
         self.V = np.zeros((self.env.dealer_values, self.env.player_values))
         
-    def epsilon_greedy(self, state):
+    def epsilon_greedy(self, state):   
         if state.dealer_card > self.N.shape[0] or state.player_sum > self.N.shape[1]:
             min_num_action = 0
         else:
             min_num_action = min(self.N[state.dealer_card - 1, state.player_sum - 1, :]) 
-            
+                
         eps = self.N0 / (self.N0 + min_num_action)
+
 #        print (eps)
         if random() < eps:
             return Action.getRandomAction()
         else:
             action_value = np.argmax(self.Q[state.dealer_card - 1, state.player_sum - 1,:])
             return Action.get_action(action_value)
-            
+     
+           
     def monte_carlo_control(self, iters):       
         for episode in range(0, iters):
             state_episode = self.env.get_initial_state()
@@ -129,8 +135,78 @@ class Agent:
         #update policy based on action-value function
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
             self.V[dealer_sum, player_sum] = max(self.Q[dealer_sum, player_sum, :])
+        print ('a')
 
-#            
+#
+    def get_feature_vector(self, state, action):
+        feature_vector = np.zeros((3,6,2))
+        dealer_cuboids = [[1,4], [4,7], [7,10]]
+        player_cuboids = [[1,6], [4,9], [7,12], [10,15], [13,18], [16,21]]
+        action_cuboids = [0,1]
+        for d_idx, d in enumerate(dealer_cuboids):
+            for p_idx, p in enumerate(player_cuboids):
+                for a_idx, a in enumerate(action_cuboids):
+                    if state.dealer_card >= d[0] and state.dealer_card <= d[1] and state.player_sum >= p[0] and state.player_sum <= p[1] and action.get_value() == a_idx:
+                        feature_vector[d_idx,p_idx,a_idx] = 1
+
+#        feature_vector[state.dealer_card-1, state.player_sum-1, action.get_value()] = 1
+        return np.reshape(feature_vector, 36)
+    
+    def epsilon_greedy_linear_constant(self, state, eps_ = 0.1): 
+        eps = eps_
+        if random() < eps:
+            return Action.getRandomAction()
+        else:
+            actionHit_value = sum(self.get_feature_vector(state, Action.hit) * self.weights)
+            actionStick_value = sum(self.get_feature_vector(state, Action.stick) * self.weights)
+            action = Action.hit if actionHit_value > actionStick_value else Action.stick
+            return action
+    
+    def estimate_Q(self, state, action):
+          return np.dot(self.get_feature_vector(state, action), self.weights)
+#        return self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
+          
+    def linear_sarsa(self, iters, lambda_):          
+        for episode in range(0, iters):
+#            E = np.zeros(((self.env.dealer_values, self.env.player_values, self.env.action_values))) 
+            E = np.zeros(36) 
+            #initialize state and action          
+            state = self.env.get_initial_state()
+            reward = 0
+            action = self.epsilon_greedy_linear_constant(state)
+#            self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1 
+            while not state.terminal:                   
+#                update number of visits
+                self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1              
+                [reward, state_forward] = self.env.step(state, action)                 
+                action_forward = self.epsilon_greedy_linear_constant(state_forward)  
+                
+                if not state_forward.terminal:
+                    current_estimate = reward + self.estimate_Q(state_forward, action_forward)
+#                    self.N[state_forward.dealer_card - 1, state_forward.player_sum - 1, Action.get_value(action_forward)] += 1
+                else:
+                    current_estimate = reward
+                    
+                previous_estimate = self.estimate_Q(state, action)
+                delta = current_estimate - previous_estimate
+                
+#                E[self.get_feature_vector(state, action) == 1] += 1
+                E = np.add(E, self.get_feature_vector(state, action))
+#                step_size = 1.0 / self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
+                step_size = 0.01                
+#                print (step_size)
+                self.weights += step_size * delta * E
+                E = lambda_ * E
+
+                action = action_forward
+                state = state_forward
+        for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
+            s = State(dealer_sum+1, player_sum+1)
+            self.Q[dealer_sum, player_sum ,0] = np.dot(self.get_feature_vector(s, Action.hit), self.weights)
+            self.Q[dealer_sum, player_sum ,1] = np.dot(self.get_feature_vector(s, Action.stick), self.weights)
+            self.V[dealer_sum, player_sum] = max(self.estimate_Q(s,Action.hit), self.estimate_Q(s,Action.stick))
+        print ('a')      
+        
     def plot_optimal_value_function(self):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -144,6 +220,7 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
-    agent.td_learning(10000, 1, True)
+#    agent.td_learning(10000, 0.5, False)
+    agent.linear_sarsa(10000,1)
 #    agent.plot_optimal_value_function()
-    print ('a')
+#    print ('a')
