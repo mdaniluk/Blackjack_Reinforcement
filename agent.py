@@ -165,9 +165,26 @@ class Agent:
     def estimate_Q(self, state, action):
           return np.dot(self.get_feature_vector(state, action), self.weights)
 #        return self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
-          
-    def linear_sarsa(self, iters, lambda_):          
+    
+    def approximation_to_Q(self):
+        Q = np.zeros((self.env.dealer_values, self.env.player_values, self.env.action_values)) 
+        for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
+            s = State(dealer_sum+1, player_sum+1)
+            Q[dealer_sum, player_sum ,0] = np.dot(self.get_feature_vector(s, Action.hit), self.weights)
+            Q[dealer_sum, player_sum ,1] = np.dot(self.get_feature_vector(s, Action.stick), self.weights)
+        return Q
+    def linear_sarsa(self, iters, lambda_, compare_to_monctecarlo = False):          
+        if compare_to_monctecarlo:
+            monte_carlo_iterations = 1000000
+            env = Environment()
+            agent = Agent(env)
+            agent.monte_carlo_control(monte_carlo_iterations)
+            Q_monte_carlo = agent.Q
+            mse_all = []
+            
         for episode in range(0, iters):
+            if (episode % 1000 == 0):
+                print (episode)
 #            E = np.zeros(((self.env.dealer_values, self.env.player_values, self.env.action_values))) 
             E = np.zeros(36) 
             #initialize state and action          
@@ -200,6 +217,16 @@ class Agent:
 
                 action = action_forward
                 state = state_forward
+            if compare_to_monctecarlo:
+#                print (compute_mse(self.Q, Q_monte_carlo))
+                mse_all.append(compute_mse(self.approximation_to_Q(), Q_monte_carlo))
+#                print(compute_mse(self.Q, Q_monte_carlo))
+  
+        if compare_to_monctecarlo:
+#            print (mse_all[-1])
+            plt.plot(range(0, iters), mse_all, 'r-')
+            plt.show()
+            
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
             s = State(dealer_sum+1, player_sum+1)
             self.Q[dealer_sum, player_sum ,0] = np.dot(self.get_feature_vector(s, Action.hit), self.weights)
@@ -221,6 +248,6 @@ if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
 #    agent.td_learning(10000, 0.5, False)
-    agent.linear_sarsa(10000,1)
+    agent.linear_sarsa(10000,1, True)
 #    agent.plot_optimal_value_function()
 #    print ('a')
