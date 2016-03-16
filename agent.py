@@ -11,7 +11,7 @@ r.seed(1)
 class Agent:
     def __init__(self, environment):
         self.env = env = environment
-        self.N0 = 10.0
+        self.N0 = 100.0
         
         # Number of time that action has been selected from state s
         self.N = np.zeros((env.dealer_values, env.player_values, env.action_values))
@@ -47,7 +47,9 @@ class Agent:
             return Action.get_action(action_value)
      
            
-    def monte_carlo_control(self, iters):       
+    def monte_carlo_control(self, iters):   
+        num_wins = 0
+        optimal_policy = np.zeros((self.env.dealer_values, self.env.player_values))
         for episode in range(0, iters):
             state_episode = self.env.get_initial_state()
             reward_episode = 0
@@ -68,10 +70,19 @@ class Agent:
                 Gt = reward_episode
                 error = Gt - self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
                 self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += step_size * error
+            if (Gt == 1):
+                num_wins = num_wins + 1
             
+        print ("Percentage of win %.3f" % (num_wins / iters * 100.0))
         #update policy based on action-value function
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
+            if self.Q[dealer_sum, player_sum, 1] > self.Q[dealer_sum, player_sum, 0]:
+                optimal_policy[dealer_sum, player_sum] = 1
             self.V[dealer_sum, player_sum] = max(self.Q[dealer_sum, player_sum, :])
+        plt.pcolor(optimal_policy)
+        plt.xlabel('Player sum')
+        plt.ylabel('Dealer showing')
+        plt.show()
     
     def td_learning(self, iters, lambda_, compare_to_monctecarlo = False):
         if compare_to_monctecarlo:
@@ -241,6 +252,8 @@ class Agent:
         y = np.arange(0,self.env.player_values, 1)
         X, Y = np.meshgrid(x, y)
         ax.plot_surface(X+1, Y+1, self.V[X,Y], rstride=1, cstride=1, cmap= 'hot', linewidth=0, antialiased=False)
+        ax.set_xlabel('Dealer showing')
+        ax.set_ylabel('Player sum')       
         plt.show()
             
 
