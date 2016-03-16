@@ -247,7 +247,8 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
+    agent.monte_carlo_control(1000000)
 #    agent.td_learning(10000, 0.5, False)
-    agent.linear_sarsa(10000,1, True)
-#    agent.plot_optimal_value_function()
+#    agent.linear_sarsa(10000,1, True)
+    agent.plot_optimal_value_function()
 #    print ('a')

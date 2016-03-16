@@ -2,7 +2,7 @@ from environment import Environment
 from agent import Agent
 import itertools
 import random
-random.seed(1)
+
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
