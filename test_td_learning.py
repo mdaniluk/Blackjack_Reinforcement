@@ -24,4 +24,6 @@ if __name__ == '__main__':
         mse_all.append(compute_mse(Q_tf, Q_monte_carlo, True))
     
     plt.plot(alphas, mse_all, 'r-')
+    plt.xlabel("lambda")
+    plt.ylabel("MSE")
     plt.show()

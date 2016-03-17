@@ -2,7 +2,7 @@ from environment import Environment
 from agent import Agent
 import matplotlib.pyplot as plt
 import random
-random.seed(3)
+random.seed(1)
 import numpy as np
 from utils import compute_mse
     
@@ -24,4 +24,6 @@ if __name__ == '__main__':
         mse_all.append(compute_mse(Q_tf, Q_monte_carlo, True))
     
     plt.plot(alphas, mse_all, 'r-')
+    plt.xlabel("lambda")
+    plt.ylabel("MSE")
     plt.show()

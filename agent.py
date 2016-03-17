@@ -11,7 +11,7 @@ r.seed(1)
 class Agent:
     def __init__(self, environment):
         self.env = env = environment
-        self.N0 = 100.0
+        self.N0 = 10.0
         
         # Number of time that action has been selected from state s
         self.N = np.zeros((env.dealer_values, env.player_values, env.action_values))
@@ -21,7 +21,7 @@ class Agent:
         
         # Policy
         self.V = np.zeros((env.dealer_values, env.player_values))
-        self.weights = np.random.uniform(low=-0.00, high=0.0, size=(36))
+        self.weights = np.random.uniform(low=-0.2, high=0.2, size=(36))
 #        self.Q = np.random.uniform(low=-0, high=0, size=(420))
 #        self.Q = np.reshape(self.Q, (env.dealer_values, env.player_values, env.action_values))
 
@@ -32,7 +32,7 @@ class Agent:
         self.V = np.zeros((self.env.dealer_values, self.env.player_values))
         
     def epsilon_greedy(self, state):   
-        if state.dealer_card > self.N.shape[0] or state.player_sum > self.N.shape[1]:
+        if state.terminal:
             min_num_action = 0
         else:
             min_num_action = min(self.N[state.dealer_card - 1, state.player_sum - 1, :]) 
@@ -141,6 +141,9 @@ class Agent:
         if compare_to_monctecarlo:
 #            print (mse_all[-1])
             plt.plot(range(0, iters), mse_all, 'r-')
+            plt.xlabel("episodes")
+            plt.ylabel("MSE")
+            plt.title("lambda = 1")
             plt.show()
                                  
         #update policy based on action-value function
@@ -151,21 +154,25 @@ class Agent:
 #
     def get_feature_vector(self, state, action):
         feature_vector = np.zeros((3,6,2))
+#        feature_vector = np.zeros((10,21,2))
         dealer_cuboids = [[1,4], [4,7], [7,10]]
         player_cuboids = [[1,6], [4,9], [7,12], [10,15], [13,18], [16,21]]
         action_cuboids = [0,1]
+        if (state.dealer_card > 10 or state.dealer_card < 1):
+            print ("sa")
         for d_idx, d in enumerate(dealer_cuboids):
             for p_idx, p in enumerate(player_cuboids):
                 for a_idx, a in enumerate(action_cuboids):
                     if state.dealer_card >= d[0] and state.dealer_card <= d[1] and state.player_sum >= p[0] and state.player_sum <= p[1] and action.get_value() == a_idx:
                         feature_vector[d_idx,p_idx,a_idx] = 1
 
+#        print (state.dealer_card)
 #        feature_vector[state.dealer_card-1, state.player_sum-1, action.get_value()] = 1
         return np.reshape(feature_vector, 36)
     
-    def epsilon_greedy_linear_constant(self, state, eps_ = 0.1): 
+    def epsilon_greedy_linear_constant(self, state, eps_ = 0.1):         
         eps = eps_
-        if random() < eps:
+        if random() < eps or state.terminal:
             return Action.getRandomAction()
         else:
             actionHit_value = sum(self.get_feature_vector(state, Action.hit) * self.weights)
@@ -184,6 +191,7 @@ class Agent:
             Q[dealer_sum, player_sum ,0] = np.dot(self.get_feature_vector(s, Action.hit), self.weights)
             Q[dealer_sum, player_sum ,1] = np.dot(self.get_feature_vector(s, Action.stick), self.weights)
         return Q
+        
     def linear_sarsa(self, iters, lambda_, compare_to_monctecarlo = False):          
         if compare_to_monctecarlo:
             monte_carlo_iterations = 1000000
@@ -236,6 +244,9 @@ class Agent:
         if compare_to_monctecarlo:
 #            print (mse_all[-1])
             plt.plot(range(0, iters), mse_all, 'r-')
+            plt.xlabel("episodes")
+            plt.ylabel("MSE")
+            plt.title("lambda = 0")
             plt.show()
             
         for (dealer_sum, player_sum), value in np.ndenumerate(self.V):
@@ -260,8 +271,8 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
-    agent.monte_carlo_control(1000000)
-#    agent.td_learning(10000, 0.5, False)
-#    agent.linear_sarsa(10000,1, True)
+#    agent.monte_carlo_control(1000000)
+#    agent.td_learning(100000, 1.0, True)
+    agent.linear_sarsa(10000,0, True)
     agent.plot_optimal_value_function()
 #    print ('a')
