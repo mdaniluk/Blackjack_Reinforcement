@@ -46,7 +46,23 @@ class Agent:
             action_value = np.argmax(self.Q[state.dealer_card - 1, state.player_sum - 1,:])
             return Action.get_action(action_value)
      
-           
+    def play(self, Q, iters):
+        num_wins = 0
+        for episode in range(0, iters):
+            state_episode = self.env.get_initial_state()
+            reward_episode = 0
+            while not state_episode.terminal:
+                if Q[state_episode.dealer_card-1, state_episode.player_sum-1, 0] > Q[state_episode.dealer_card-1, state_episode.player_sum-1, 1]:
+                    action = Action.hit
+                else:
+                    action = Action.stick
+  
+                [reward_episode, state_episode] = self.env.step(state_episode, action)
+            
+            if (reward_episode == 1):
+                num_wins = num_wins + 1 
+                
+        print ("Percentage of win %.3f" % (num_wins / iters * 100.0))
     def monte_carlo_control(self, iters):   
         num_wins = 0
         optimal_policy = np.zeros((self.env.dealer_values, self.env.player_values))
@@ -202,8 +218,8 @@ class Agent:
             mse_all = []
             
         for episode in range(0, iters):
-            if (episode % 1000 == 0):
-                print (episode)
+#            if (episode % 1000 == 0):
+#                print (episode)
 #            E = np.zeros(((self.env.dealer_values, self.env.player_values, self.env.action_values))) 
             E = np.zeros(36) 
             #initialize state and action          
@@ -271,8 +287,8 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
-#    agent.monte_carlo_control(1000000)
+    agent.monte_carlo_control(1000000)
 #    agent.td_learning(100000, 1.0, True)
-    agent.linear_sarsa(10000,0, True)
+#    agent.linear_sarsa(10000,0, True)
     agent.plot_optimal_value_function()
 #    print ('a')
