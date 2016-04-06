@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 #random.seed(1)
 import numpy as np
 from utils import compute_mse
-    
+
 if __name__ == '__main__':
     monte_carlo_iterations = 1000000
     td_iterations = 10000

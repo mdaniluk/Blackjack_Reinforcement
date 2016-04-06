@@ -1,6 +1,6 @@
 import numpy as np
 from random import random
-from utils import  Action, State
+from utils import  Action, State, Trace
 from environment import Environment
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -100,7 +100,7 @@ class Agent:
         plt.ylabel('Dealer showing')
         plt.show()
     
-    def td_learning(self, iters, lambda_, compare_to_monctecarlo = False):
+    def td_learning(self, iters, lambda_, compare_to_monctecarlo = False, trace = Trace.accumulating):
         if compare_to_monctecarlo:
             monte_carlo_iterations = 1000000
             env = Environment()
@@ -132,11 +132,21 @@ class Agent:
                 previous_estimate = self.Q[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
                 delta = current_estimate - previous_estimate
                 
-                E[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1
-                
                 step_size = 1.0 / self.N[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)]
+                if trace == Trace.accumulating:
+                    E[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] += 1
+                elif trace == Trace.replacing:
+                    E[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] = 1
+                elif trace == Trace.dutch:
+#                    print ('dutch')
+                    E[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] = E[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)] + step_size*(1 - E[state.dealer_card - 1, state.player_sum - 1, Action.get_value(action)])
+                            
+                         
 #                print (step_size)
-                self.Q += step_size * delta * E
+                if trace == Trace.dutch:
+                    self.Q += delta * E
+                else:
+                    self.Q += step_size * delta * E
                 E = lambda_ * E
                 #update Q
 #                if not state_forward.terminal:
@@ -287,8 +297,8 @@ class Agent:
 if __name__ == '__main__':
     env = Environment()
     agent = Agent(env)
-    agent.monte_carlo_control(1000000)
-#    agent.td_learning(100000, 1.0, True)
+#    agent.monte_carlo_control(1000000)
+    agent.td_learning(10000, 1.0, True, trace = Trace.accumulating)
 #    agent.linear_sarsa(10000,0, True)
-    agent.plot_optimal_value_function()
+#    agent.plot_optimal_value_function()
 #    print ('a')

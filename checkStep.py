@@ -11,7 +11,7 @@ def chech_step(dealer_card, player_sum, action, file_name):
         os.remove("output/" + file_name)
     env = Environment()
     print ('DealerCard\t PlayerSum\t reward\t frequency')
-    iterations = 1000
+    iterations = 10000
     output = Counter()
     for i in range(0, iterations):
         [reward, state_res] = check(env, dealer_card, player_sum, action)

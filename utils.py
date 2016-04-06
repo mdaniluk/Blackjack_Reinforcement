@@ -35,6 +35,10 @@ class State:
         self.dealer_card = dealer_card
         self.player_sum = player_sum
         self.terminal = terminal
-        
+
+class Trace(Enum):
+    accumulating = 0
+    replacing = 1
+    dutch = 2     
         
         
